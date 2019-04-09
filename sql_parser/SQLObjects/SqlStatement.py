@@ -14,6 +14,7 @@ class SqlStatement():
 
     def __init__(self,enum):
         self.enum=enum
+        self.parse_sql_statement()
 
 
     def parse_sql_statement(self):

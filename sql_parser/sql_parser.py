@@ -14,15 +14,19 @@ keywords=[',','(',')']
 
 sql_reformated=sql_statement
 
+#formatage de la chaine , on met en place les espaces autour des virgules, parentheses
 for kw in keywords:
     sql_reformated=sql_reformated.replace(kw, ' {} '.format(kw))
 
+#les mots cles composes sont regroupes en un seul mot sans espace
 for mot_compose in ['inner join', 'left outer join', 'right outer join', 'group by', 'order by']:
     sql_reformated=sql_reformated.replace(mot_compose, mot_compose.replace(' ',''))
 
+#on vire les espaces en doublons
 while sql_reformated.find('  ')>0:
     sql_reformated=sql_reformated.replace('  ',' ')
 
+#normalement, on a ici une liste separees par des espaces ou chaque "mot" est signifiant
 words=sql_reformated.split()
 
 
@@ -34,8 +38,6 @@ from PrevNextIterator import PrevNextIterator
 enum=PrevNextIterator(words)
 
 sql_statement=SqlStatement(enum)
-sql_statement.parse_sql_statement()
-
 
 
 print('end')
