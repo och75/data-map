@@ -30,10 +30,8 @@ while sql_reformated.find('  ')>0:
 words=sql_reformated.split()
 
 
-
-
-from SQLObjects.SqlStatement import SqlStatement
-from PrevNextIterator import PrevNextIterator
+from SQLObjects.sql_statement import SqlStatement
+from prev_next_iterator import PrevNextIterator
 
 enum=PrevNextIterator(words)
 

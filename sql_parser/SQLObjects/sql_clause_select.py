@@ -1,6 +1,6 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-from SqlField import SqlField
+from sql_field import SqlField
 
 
 class SqlClauseSelect():
