@@ -1,7 +1,24 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
 
-sql_statement="select monchamp as label1,momautrechamp as label2 from table1 as t1 inner join table2 as t2 on t1.k=t2.k inner join table3 t3 on t3.k=t2.k  where (toto>'2019' Or momo='toutoitit' );"
+sql_statement="select " \
+              "  monchamp as label1," \
+              "  momautrechamp as label2, " \
+              "  if(t1.toto is null, 2,1) as rank, " \
+              "  field4 " \
+              "from " \
+              "  table1 as t1 " \
+              "inner join table2 as t2 " \
+              "    on t1.k=t2.k " \
+              "inner join ( " \
+              "  select if(coalesce(monChamp, 'rien'), 'rien', select max(mon champ) fron another table T  ) " \
+              "  from table3" \
+              "  where table3.truc='uneValeur' " \
+              ") t3 " \
+              "    on t2.k=t3.k " \
+              "left outer join table4 on t3.k=t4.k " \
+              "where " \
+              "  (toto>'2019' Or momo='toutoitit' );"
 
 #pattern_select=r"select(.*)from"
 #pattern_from=r"from(.*)[(where)|(group by)|(order by)|;]"
