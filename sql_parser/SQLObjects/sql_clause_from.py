@@ -1,6 +1,6 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-from sql_table import SqlTable
+from sql_objects import SqlTable
 
 
 class SqlClauseFrom():
