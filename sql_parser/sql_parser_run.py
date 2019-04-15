@@ -47,7 +47,7 @@ while sql_reformated.find('  ') > 0:
 words = sql_reformated.split()
 
 from sql_parser.prev_next_iterator import PrevNextIterator
-from sql_parser.SQL_Objects_pkg.sql_statement import SqlStatement
+from sql_parser.sql_statements import SqlStatement
 
 enum = PrevNextIterator(words)
 
