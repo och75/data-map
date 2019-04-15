@@ -1,9 +1,9 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-from sql_objects import SqlField
+from sql_parser.sql_objects import SqlField
 
 
-class SqlClauseSelect():
+class SqlClauseSelect:
 
     sql_fields=None
 

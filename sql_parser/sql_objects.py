@@ -1,6 +1,6 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-class SqlAbstractObject():
+class SqlAbstractObject:
 
     base_string_literals=None
 
@@ -42,17 +42,17 @@ class SqlAbstractObject():
 
         if (one_object.nb_open_parenthesis_while_iter > 0 or (word not in one_object.BASE_DELIMITERS and not stop_iterate_object)):
 
-            one_object.field_string_literals.append(word)
+            one_object.base_string_literals.append(word)
             stop_iterate_object, one_object = SqlAbstractObject.iterate_one_object_strings(type_obj, enum, one_object)
 
         return stop_iterate_object, one_object
 
 class SqlTable(SqlAbstractObject):
+    TABLE_DELIMITERS = ['innerjoin', 'leftouterjoin', 'crossjoin', 'rightouterjoin', 'on']
+    TABLE_END_ENUM = ['where', ';', 'groupby', 'orderby']
 
     def __init__(self):
-        TABLE_DELIMITERS = ['innerjoin', 'leftouterjoin', 'crossjoin', 'rightouterjoin', 'on']
-        TABLE_END_ENUM = ['where', ';', 'groupby', 'orderby']
-        super( TABLE_DELIMITERS, TABLE_END_ENUM)
+        super().__init__(self.TABLE_DELIMITERS, self.TABLE_END_ENUM)
 
     @staticmethod
     def iterate_one_table_strings(enum, one_table=None):
@@ -60,10 +60,11 @@ class SqlTable(SqlAbstractObject):
 
 class SqlField(SqlAbstractObject):
 
+    FIELD_DELIMITERS = [',']
+    FIELD_END_ENUM = ['from']
+
     def __init__(self):
-        FIELD_DELIMITERS = [',']
-        FIELD_END_ENUM = ['from']
-        super( FIELD_DELIMITERS, FIELD_END_ENUM)
+        super().__init__(self.FIELD_DELIMITERS, self.FIELD_END_ENUM)
 
     @staticmethod
     def iterate_one_field_strings(enum, one_table=None):

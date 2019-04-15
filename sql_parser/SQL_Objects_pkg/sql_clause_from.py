@@ -1,9 +1,9 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-from sql_objects import SqlTable
+from sql_parser.sql_objects import SqlTable
 
 
-class SqlClauseFrom():
+class SqlClauseFrom:
 
     sql_tables=None
     sql_table_string=None
@@ -12,9 +12,9 @@ class SqlClauseFrom():
         self.sql_table_string = ''
 
     @staticmethod
-    def iterate_from_clause(enum, stop=False, sql_tables=[]):
+    def iterate_from_clause(enum, stop=False, f_sql_tables=[]):
         stop, one_table = SqlTable.iterate_one_table_strings(enum)
-        sql_tables.append(one_table)
+        f_sql_tables.append(one_table)
 
         index, word=enum.actual()
 
@@ -24,6 +24,6 @@ class SqlClauseFrom():
             stop = word in SqlTable.TABLE_END_ENUM and not stop
 
         if not stop:
-            stop, sql_tables = SqlClauseFrom.iterate_from_clause(enum,sql_tables)
+            stop, f_sql_tables = SqlClauseFrom.iterate_from_clause(enum, f_sql_tables)
 
-        return stop, sql_tables
+        return stop, f_sql_tables
