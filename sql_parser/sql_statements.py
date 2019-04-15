@@ -1,7 +1,6 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-from sql_clause_select import SqlClauseSelect
-from sql_clause_from import SqlClauseFrom
+from sql_parser.sql_clauses import SqlClauseSelect, SqlClauseFrom
 
 class SqlStatement():
 

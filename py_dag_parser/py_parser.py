@@ -32,10 +32,9 @@ for path, subdirs, files in os.walk(root):
                 if len(list_sql)>0:
                     list_sql_files=[item for item in list_sql[0] if item[-4:]=='.sql']
                     list_py_files[full_path]['sql_files'].append(list_sql_files[0])
-                    print 'rien'
+                    print('rien')
 
-
-print 'end'
+print ('end')
 
 #https://stackoverflow.com/questions/454456/how-do-i-re-search-or-re-match-on-a-whole-file-without-reading-it-all-into-memor
 #recherche SQL script
