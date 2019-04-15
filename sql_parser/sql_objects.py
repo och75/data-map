@@ -1,22 +1,28 @@
 #!/usr/bin/python 
 # -*- coding: utf-8 -*-
-class SqlAbstractObject:
+
+from abc import ABC, abstractmethod
+
+class SqlAbstractObject(ABC):
 
     base_string_literals=None
-
-    BASE_DELIMITERS=None
-    BASE_END_ENUM = None
 
     #nombre de parentheses ouvertes pendant l'iteration de ce Field dnas le cas ou le field est une composition de fonction :
     #if(coalesce(monChamp, 'rien'), 'rien', select max(mon champ) fron another table T  )
     #permet d'overrider les Field_delimiters
     nb_open_parenthesis_while_iter=None
 
-    def __init__(self, BASE_DELIMITERS, BASE_END_ENUM):
+    def __init__(self):
         self.base_string_literals = []
         self.nb_open_parenthesis_while_iter=0
-        self.BASE_DELIMITERS=BASE_DELIMITERS
-        self.BASE_END_ENUM=BASE_END_ENUM
+
+    @abstractmethod
+    def get_obj_delimiters(self):
+        return None
+
+    @abstractmethod
+    def get_obj_end_enum(self):
+        return None
 
 
     @staticmethod
@@ -35,12 +41,12 @@ class SqlAbstractObject:
             one_object = SqlAbstractObject.factory_children(type_obj)
 
         index, word = enum.next()
-        stop_iterate_object = False if word not in one_object.BASE_END_ENUM else True
+        stop_iterate_object = False if word not in one_object.get_obj_end_enum() else True
 
         one_object.nb_open_parenthesis_while_iter += 1 if word == '(' else 0
         one_object.nb_open_parenthesis_while_iter -= 1 if word == ')' else 0
 
-        if (one_object.nb_open_parenthesis_while_iter > 0 or (word not in one_object.BASE_DELIMITERS and not stop_iterate_object)):
+        if (one_object.nb_open_parenthesis_while_iter > 0 or (word not in one_object.get_obj_delimiters() and not stop_iterate_object)):
 
             one_object.base_string_literals.append(word)
             stop_iterate_object, one_object = SqlAbstractObject.iterate_one_object_strings(type_obj, enum, one_object)
@@ -52,7 +58,13 @@ class SqlTable(SqlAbstractObject):
     TABLE_END_ENUM = ['where', ';', 'groupby', 'orderby']
 
     def __init__(self):
-        super().__init__(self.TABLE_DELIMITERS, self.TABLE_END_ENUM)
+        super().__init__()
+
+    def get_obj_delimiters(self):
+        return self.TABLE_DELIMITERS
+
+    def get_obj_end_enum(self):
+        return self.TABLE_END_ENUM
 
     @staticmethod
     def iterate_one_table_strings(enum, one_table=None):
@@ -64,7 +76,13 @@ class SqlField(SqlAbstractObject):
     FIELD_END_ENUM = ['from']
 
     def __init__(self):
-        super().__init__(self.FIELD_DELIMITERS, self.FIELD_END_ENUM)
+        super().__init__()
+
+    def get_obj_delimiters(self):
+        return self.FIELD_DELIMITERS
+
+    def get_obj_end_enum(self):
+        return self.FIELD_END_ENUM
 
     @staticmethod
     def iterate_one_field_strings(enum, one_table=None):
