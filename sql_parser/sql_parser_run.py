@@ -11,7 +11,7 @@ str_sql_statement = "select " \
                 "inner join table2 as t2 " \
                 "    on t1.k=t2.k " \
                 "inner join ( " \
-                "  select if(coalesce(monChamp, 'rien'), 'rien', select max(mon champ) from another table T  ) " \
+                "  select if(coalesce(monChamp, 'rien'), 'rien', ( select max(mon champ) from another_table T ) ) " \
                 "  from table3" \
                 "  where table3.truc='uneValeur' " \
                 ") t3 " \
@@ -47,7 +47,7 @@ while sql_reformated.find('  ') > 0:
 words = sql_reformated.split()
 
 from sql_parser.prev_next_iterator import PrevNextIterator
-from sql_parser.sql_statements import SqlStatement
+from sql_parser.sql_objects import SqlStatement
 
 enum = PrevNextIterator(words)
 
