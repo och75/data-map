@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABC, abstractmethod
-from sql_parser.prev_next_iterator import PrevNextIterator
+from simple_sql_parser.prev_next_iterator import PrevNextIterator
 
 class SqlClauseFrom:
 
@@ -92,18 +92,28 @@ class SqlAbstractObject(ABC):
 
     def introspect(self):
         """
-        intrsopection pour decouvrir le nom/alias de l'objet, decouvrir si cest une requete SQL etc
+        intrsopection pour decouvrir le nom/alias de l'objet, decouvrir si cest une sous requete SQL etc
         :return:
         """
         if not self.has_introspected:
-            if 'select' in self.strings_list:
-                #creeer un iterateur ne contenant pas les parentheses ouvrantes fermantes du sous select
-                index_par_open=self.strings_list.index('(')
-                index_par_close= len(self.strings_list) - self.strings_list[::-1].index(')') - 1
-                sub_enum=PrevNextIterator(self.strings_list[index_par_open + 1:index_par_close])
+            index_select = self.strings_list.index('select') if 'select' in self.strings_list else -1
+            index_select_end=-1
+            par =0
+
+            if index_select>-1:
+                #creer un iterateur ne contenant pas les parentheses ouvrantes fermantes du sous select
+                #la chaine doit s'arreter a la bonne parenthèse fermante , on va rechercher la derniere parenthèse fermante
+                #a partir du point de depart index_select
+                for index, word in enumerate(self.strings_list[index_select:] ) :
+                    par += 1 if word == '(' else -1 if word == ')' else 0
+                    index_select_end = index_select+index \
+                        if par == -1 and index_select_end == -1 else index_select_end
+
+                sub_enum=PrevNextIterator(self.strings_list[index_select :index_select_end])
                 self.sub_select=SqlStatement(sub_enum)
                 self.has_sub_select = True
 
+            self.sql_alias_name= self.strings_list[-1]
             self.has_introspected=True
 
     @abstractmethod
@@ -127,19 +137,30 @@ class SqlAbstractObject(ABC):
 
     @staticmethod
     def iterate_one_object_strings(type_obj, enum, one_object=None):
-        if one_object is None:
-            one_object = SqlAbstractObject.factory_child(type_obj)
 
-        index, word = enum.next()
-        stop_iterate_object = False if word not in one_object.get_obj_end_enum() else True
+        one_object = SqlAbstractObject.factory_child(type_obj) \
+            if one_object is None else one_object
 
+        index, word, stop_iterate_object= -1,'', False
+        try:
+            index, word = enum.next()
+            stop_iterate_object = False if word not in one_object.get_obj_end_enum() else True
+        except StopIteration:
+            stop_iterate_object=True
+
+        #on itere tant qu'on ne tombe pqs sur un mot delimitant
+        # et qu'il n'y a pas de parentheses ouvertes, signe qu'on serait dans un sous select
+        # qui lui aussi pourrait contenir des mots delimitants
         one_object.nb_open_parenthesis_while_iter += 1 if word == '(' else 0
         one_object.nb_open_parenthesis_while_iter -= 1 if word == ')' else 0
 
-        if (one_object.nb_open_parenthesis_while_iter > 0 or (word not in one_object.get_obj_delimiters() and not stop_iterate_object)):
+        if (one_object.nb_open_parenthesis_while_iter > 0
+                or (word not in one_object.get_obj_delimiters() and not stop_iterate_object)
+        ):
             one_object.strings_list.append(word)
             stop_iterate_object, one_object = SqlAbstractObject.iterate_one_object_strings(type_obj, enum, one_object)
         else:
+            # fin de l'iterqtion, on lance l'introspection
             one_object.introspect()
 
         return stop_iterate_object, one_object

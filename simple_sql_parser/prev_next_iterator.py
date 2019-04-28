@@ -15,6 +15,7 @@ class PrevNextIterator(object):
             result_value = self.collection[self.index]
             result_index=self.index
         except IndexError:
+            self.index -= 1
             raise StopIteration
         return result_index, result_value
 
