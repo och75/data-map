@@ -19,6 +19,18 @@ str_sql_statement = "select " \
                 "where " \
                 "  (toto>'2019' Or momo='toutoitit' );"
 
-cas1=SQLParser(str_sql_statement)
+#cas1=SQLParser(str_sql_statement)
+
+
+str_sql_statement = "select " \
+                "  monchamp as label1 " \
+                "from " \
+                "( " \
+                "  select if(coalesce(monChamp, 'rien'), 'rien', ( select max(mon champ) from another_table T ) ) " \
+                "  from table3" \
+                "  where table3.truc='uneValeur' " \
+                ") t3 "
+
+cas2=SQLParser(str_sql_statement)
 
 print('end')

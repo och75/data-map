@@ -7,13 +7,14 @@ class SQLParser:
     SEP = [',', '(', ')']
     str_sql_statement=''
     enum=None
+    sql_statement=None
 
     def __init__(self,str_sql_statement):
         self.str_sql_statement=str_sql_statement
         self.enum = PrevNextIterator(
             self.format_and_prepare_sql()
         )
-        sql_statement = SqlStatement(self.enum)
+        self.sql_statement = SqlStatement(self.enum)
 
     def  format_and_prepare_sql(self):
         sql_reformated = self.str_sql_statement
