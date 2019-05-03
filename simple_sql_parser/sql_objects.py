@@ -11,11 +11,12 @@ class SqlClauseFrom:
 
     def __init__(self):
         self.sql_table_string = ''
+        self.sql_tables=[]
 
-    @staticmethod
-    def iterate_from_clause(enum, stop=False, f_sql_tables=[]):
-        stop, one_table = SqlTable.iterate_one_table_strings(enum)
-        f_sql_tables.append(one_table)
+    def iterate_from_clause(self, enum, stop=False):
+        one_table=SqlTable()
+        stop = one_table.iterate_one_table_strings(enum)
+        self.sql_tables.append(one_table)
 
         index, word=enum.actual()
 
@@ -25,10 +26,9 @@ class SqlClauseFrom:
             stop = word in SqlTable.TABLE_END_ENUM and not stop
 
         if not stop:
-            stop, f_sql_tables = SqlClauseFrom.iterate_from_clause(enum, f_sql_tables)
+            stop = self.iterate_from_clause(self,enum)
 
-        return stop, f_sql_tables
-
+        return stop
 
 class SqlClauseSelect:
 
@@ -37,15 +37,15 @@ class SqlClauseSelect:
     def __init__(self):
         self.sql_fields = []
 
-    @staticmethod
-    def iterate_select_clause(enum, stop=False, sql_fields=[]):
-        stop, one_field = SqlField.iterate_one_field_strings(enum)
-        sql_fields.append(one_field)
+    def iterate_select_clause(self, enum, stop=False):
+        one_field=SqlField()
+        stop = one_field.iterate_one_field_strings(enum)
+        self.sql_fields.append(one_field)
 
         if not stop:
-            stop, sql_fields = SqlClauseSelect.iterate_select_clause(enum, sql_fields)
+            stop = self.iterate_select_clause(enum)
 
-        return stop, sql_fields
+        return stop
 
 class SqlStatement():
 
@@ -124,8 +124,6 @@ class SqlAbstractObject(ABC):
     def get_obj_end_enum(self):
         return None
 
-
-    @staticmethod
     def factory_child(type_obj):
         obj=None
         if type_obj=='table':
@@ -135,35 +133,30 @@ class SqlAbstractObject(ABC):
 
         return obj
 
-    @staticmethod
-    def iterate_one_object_strings(type_obj, enum, one_object=None):
-
-        one_object = SqlAbstractObject.factory_child(type_obj) \
-            if one_object is None else one_object
-
+    def iterate_one_object_strings(self, enum):
         index, word, stop_iterate_object= -1,'', False
         try:
             index, word = enum.next()
-            stop_iterate_object = False if word not in one_object.get_obj_end_enum() else True
+            stop_iterate_object = False if word not in self.get_obj_end_enum() else True
         except StopIteration:
             stop_iterate_object=True
 
         #on itere tant qu'on ne tombe pqs sur un mot delimitant
         # et qu'il n'y a pas de parentheses ouvertes, signe qu'on serait dans un sous select
         # qui lui aussi pourrait contenir des mots delimitants
-        one_object.nb_open_parenthesis_while_iter += 1 if word == '(' else 0
-        one_object.nb_open_parenthesis_while_iter -= 1 if word == ')' else 0
+        self.nb_open_parenthesis_while_iter += 1 if word == '(' else 0
+        self.nb_open_parenthesis_while_iter -= 1 if word == ')' else 0
 
-        if (one_object.nb_open_parenthesis_while_iter > 0
-                or (word not in one_object.get_obj_delimiters() and not stop_iterate_object)
+        if (self.nb_open_parenthesis_while_iter > 0
+                or (word not in self.get_obj_delimiters() and not stop_iterate_object)
         ):
-            one_object.strings_list.append(word)
-            stop_iterate_object, one_object = SqlAbstractObject.iterate_one_object_strings(type_obj, enum, one_object)
+            self.strings_list.append(word)
+            stop_iterate_object = self.iterate_one_object_strings(self, enum)
         else:
             # fin de l'iterqtion, on lance l'introspection
-            one_object.introspect()
+            self.introspect()
 
-        return stop_iterate_object, one_object
+        return stop_iterate_object
 
 class SqlTable(SqlAbstractObject):
     TABLE_DELIMITERS = ['innerjoin', 'leftouterjoin', 'crossjoin', 'rightouterjoin', 'on']
@@ -178,9 +171,8 @@ class SqlTable(SqlAbstractObject):
     def get_obj_end_enum(self):
         return self.TABLE_END_ENUM
 
-    @staticmethod
-    def iterate_one_table_strings(enum):
-        return SqlAbstractObject.iterate_one_object_strings('table',enum)
+    def iterate_one_table_strings(self,enum):
+        return super().iterate_one_object_strings(self,enum)
 
 class SqlField(SqlAbstractObject):
 
@@ -196,6 +188,5 @@ class SqlField(SqlAbstractObject):
     def get_obj_end_enum(self):
         return self.FIELD_END_ENUM
 
-    @staticmethod
-    def iterate_one_field_strings(enum):
-        return SqlAbstractObject.iterate_one_object_strings('field',enum)
+    def iterate_one_field_strings(self,enum):
+        return SqlAbstractObject.iterate_one_object_strings(self, enum)
