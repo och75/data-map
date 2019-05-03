@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 class PrevNextIterator(object):
+
+    collection=[]
+    index=-1
+
     def __init__(self, collection):
         self.collection = collection
-        self.index = -1
 
     def next(self):
         try:
@@ -12,6 +15,7 @@ class PrevNextIterator(object):
             result_value = self.collection[self.index]
             result_index=self.index
         except IndexError:
+            self.index -= 1
             raise StopIteration
         return result_index, result_value
 
@@ -30,6 +34,9 @@ class PrevNextIterator(object):
         result_index = self.index
 
         return result_index, result_value
+
+    def value_at_index(self,i):
+        return self.collection[i]
 
     def __iter__(self):
         return self
