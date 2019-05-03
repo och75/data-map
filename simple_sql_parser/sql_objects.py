@@ -13,9 +13,9 @@ class SqlClauseFrom:
         self.sql_table_string = ''
         self.sql_tables=[]
 
-    def iterate_from_clause(self, enum, stop=False):
+    def iterate_from_clause(self, enum):
         one_table=SqlTable()
-        stop = one_table.iterate_one_table_strings(enum)
+        stop = one_table.iterate_one_table_strings( enum)
         self.sql_tables.append(one_table)
 
         index, word=enum.actual()
@@ -26,7 +26,7 @@ class SqlClauseFrom:
             stop = word in SqlTable.TABLE_END_ENUM and not stop
 
         if not stop:
-            stop = self.iterate_from_clause(self,enum)
+            stop = self.iterate_from_clause(enum)
 
         return stop
 
@@ -37,7 +37,7 @@ class SqlClauseSelect:
     def __init__(self):
         self.sql_fields = []
 
-    def iterate_select_clause(self, enum, stop=False):
+    def iterate_select_clause(self, enum):
         one_field=SqlField()
         stop = one_field.iterate_one_field_strings(enum)
         self.sql_fields.append(one_field)
@@ -65,12 +65,12 @@ class SqlStatement():
         index, word = self.enum.next()
         if word == 'select':
             self.select_clause = SqlClauseSelect()
-            stop, self.select_clause.sql_fields = SqlClauseSelect.iterate_select_clause(self.enum)
+            stop= self.select_clause.iterate_select_clause(self.enum)
 
         index, word = self.enum.actual()
         if word == 'from':
             self.from_clause = SqlClauseFrom()
-            stop, self.from_clause.sql_tables = SqlClauseFrom.iterate_from_clause(self.enum)
+            stop= self.from_clause.iterate_from_clause(self.enum)
 
 class SqlAbstractObject(ABC):
 
@@ -151,7 +151,7 @@ class SqlAbstractObject(ABC):
                 or (word not in self.get_obj_delimiters() and not stop_iterate_object)
         ):
             self.strings_list.append(word)
-            stop_iterate_object = self.iterate_one_object_strings(self, enum)
+            stop_iterate_object = self.iterate_one_object_strings( enum)
         else:
             # fin de l'iterqtion, on lance l'introspection
             self.introspect()
@@ -172,7 +172,7 @@ class SqlTable(SqlAbstractObject):
         return self.TABLE_END_ENUM
 
     def iterate_one_table_strings(self,enum):
-        return super().iterate_one_object_strings(self,enum)
+        return super().iterate_one_object_strings(enum)
 
 class SqlField(SqlAbstractObject):
 

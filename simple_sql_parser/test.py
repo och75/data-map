@@ -10,7 +10,7 @@ str_sql_statement = "select " \
                 "inner join table2 as t2 " \
                 "    on t1.k=t2.k " \
                 "inner join ( " \
-                "  select if(coalesce(monChamp, 'rien'), 'rien', ( select max(mon champ) from another_table T ) ) " \
+                "  select if(coalesce(monChamp, 'rien'), 'rien', ( select max( mon_champ ) as maxChamp from another_table T ) leChamp ) " \
                 "  from table3" \
                 "  where table3.truc='uneValeur' " \
                 ") t3 " \
@@ -19,7 +19,7 @@ str_sql_statement = "select " \
                 "where " \
                 "  (toto>'2019' Or momo='toutoitit' );"
 
-#cas1=SQLParser(str_sql_statement)
+cas1=SQLParser(str_sql_statement)
 
 
 str_sql_statement = "select " \
@@ -31,6 +31,6 @@ str_sql_statement = "select " \
                 "  where table3.truc='uneValeur' " \
                 ") t3 "
 
-cas2=SQLParser(str_sql_statement)
+#cas2=SQLParser(str_sql_statement)
 
 print('end')
