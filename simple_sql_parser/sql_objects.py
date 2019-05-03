@@ -4,6 +4,8 @@
 from abc import ABC, abstractmethod
 from simple_sql_parser.prev_next_iterator import PrevNextIterator
 
+#TODO clause with() extend SqlStatement
+#TODO Insert ?  update ? delete ? Select extend SqlStatement
 class SqlClauseFrom:
 
     sql_tables=None
@@ -81,6 +83,7 @@ class SqlAbstractObject(ABC):
     #permet d'overrider les Field_delimiters
     nb_open_parenthesis_while_iter=None
 
+    sql_object_name=None
     sql_alias_name=None
     has_sub_select=None
     has_introspected=False
@@ -114,6 +117,14 @@ class SqlAbstractObject(ABC):
                 self.has_sub_select = True
 
             self.sql_alias_name= self.strings_list[-1]
+
+            if self.has_sub_select ==False :
+                if self.strings_list[-2]=='as':
+                    self.sql_object_name= self.strings_list[-3]
+                else :
+                    self.sql_object_name = self.strings_list[-2]
+                    #TODO si cest un champ compose ? un max() ? qu'il n'y a pas de as ?
+
             self.has_introspected=True
 
     @abstractmethod
