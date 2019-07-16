@@ -1,18 +1,55 @@
+/*
+SELECT protopayload_auditlog.methodName, count(*) FROM `bbc-data-platform.BigQuery_stackdriver.cloudaudit_googleapis_com_activity_20190710`
+group by 1
+
+Row	methodName	f0_
+1	tableservice.insert 125
+2	tableservice.update 2
+3	tableservice.delete 269
+
+SELECT protopayload_auditlog.methodName, count(*) FROM `bbc-data-platform.BigQuery_stackdriver.cloudaudit_googleapis_com_data_access_20190710`
+group by 1
+
+Row methodName  f0_
+1 jobservice.jobcompleted 8785
+2 tabledataservice.list 2313
+3 jobservice.insert 12549
+4 jobservice.cancel 8
+5 jobservice.getqueryresults 146156
+6 jobservice.query 829
+
+
+*/
+
 with t1 as (
-    SELECT
+  SELECT
     row_number() over() as key,
-    lower(protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query) as req
-    FROM `bbc-data-platform.BigQuery_stackdriver.cloudaudit_googleapis_com_data_access_20190504`
-    where protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query is not null
-  --and lower(protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query) like '%select `booking_mode` as `booking_mode`,%'
+    resource.labels.project_id,
+    protopayload_auditlog.methodName,
+    protopayload_auditlog.resourceName,
+    protopayload_auditlog.status.message,
+    protopayload_auditlog.authenticationInfo.principalEmail,
+    protopayload_auditlog.servicedata_v1_bigquery.tableInsertRequest,
+    protopayload_auditlog.servicedata_v1_bigquery.tableUpdateRequest,
+    protopayload_auditlog.servicedata_v1_bigquery.datasetListRequest,
+    protopayload_auditlog.servicedata_v1_bigquery.datasetInsertRequest,
+    protopayload_auditlog.servicedata_v1_bigquery.datasetUpdateRequest,
+    lower(protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query) as req,
+    --farm finger print pour idnetifier les req recurrentes
+    -- regexp_substr pour choper category et sub-category
+    -- attraper les jointures pour determiner comment les tables sont jointes entre elles
+  FROM
+    `bbc-data-platform.BigQuery_stackdriver.cloudaudit_googleapis_com_data_access_20190710`
+  where
+    protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query is not null
 ),
 t2 as (
   --on splitte la reauete en mots
-  select key,  req, REGEXP_EXTRACT_ALL(req, '[A-Za-z0-9_]+' ) as areq from t1
+  select key,  t1.*, REGEXP_EXTRACT_ALL(req, '[A-Za-z0-9_]+' ) as areq from t1
 ),
 t3 as (
   --on deplie la liste/array pour la rendre facilement manipulable
-  select t2.key, t2.req, uc
+  select t2.key, t2.*, uc
   from t2
          left outer join unnest(t2.areq) uc
 ),
