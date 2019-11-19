@@ -34,7 +34,7 @@ with t1 as (
     protopayload_auditlog.servicedata_v1_bigquery.datasetListRequest,
     protopayload_auditlog.servicedata_v1_bigquery.datasetInsertRequest,
     protopayload_auditlog.servicedata_v1_bigquery.datasetUpdateRequest,
-    lower(protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query) as req,
+    lower(protopayload_auditlog.servicedata_v1_bigquery.jobQueryRequest.query) as req
     --farm finger print pour idnetifier les req recurrentes
     -- regexp_substr pour choper category et sub-category
     -- attraper les jointures pour determiner comment les tables sont jointes entre elles

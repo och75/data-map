@@ -9,13 +9,6 @@ class SQLParser:
     enum=None
     sql_statement=None
 
-    def __init__(self,str_sql_statement):
-        self.str_sql_statement=str_sql_statement
-        self.enum = PrevNextIterator(
-            self.format_and_prepare_sql()
-        )
-        self.sql_statement = SqlStatement(self.enum)
-
     def  format_and_prepare_sql(self):
         sql_reformated = self.str_sql_statement
         # formatage de la chaine , on met en place les espaces autour des virgules, parentheses
@@ -33,6 +26,12 @@ class SQLParser:
         # normalement, on a ici une liste separees par des espaces ou chaque "mot" est signifiant
         return sql_reformated.split()
 
+    def __init__(self,str_sql_statement):
+        self.str_sql_statement=str_sql_statement
+        self.enum = PrevNextIterator(
+            self.format_and_prepare_sql()
+        )
+        self.sql_statement = SqlStatement(self.enum)
 
 # pattern_select=r"select(.*)from"
 # pattern_from=r"from(.*)[(where)|(group by)|(order by)|;]"
