@@ -1,17 +1,53 @@
+/*
+TODO faire les stats d'utilisation ensuite par champ, par tables
+TODO une vision table.cchamp
+
+*/
 
 update temp.explore_queries_4 t4
-  set t4.select_from_tables=t2.ls_tables
+  set t4.ls_select_fields=t2.ls_fields
 from (
  select
     t.key,
-    array_agg(tb.TABLE_NAME) as ls_tables
+    array_agg(distinct tb.COLUMN_NAME) as ls_fields
   from
     temp.explore_queries_4 t
     cross join
       unnest(t.ls_words) word
       inner join
+        warehouse.INFORMATION_SCHEMA.COLUMNS tb
+          on word=tb.COLUMN_NAME
+          and tb.TABLE_NAME in unnest(t.ls_select_from_tables)
+  where
+    t.type_operation='select'
+  group by
+    1
+) t2
+where
+  t2.key=t4.key;
+
+/*
+ TODO créer une table regroupant toutes metadatas de tous les schémas pour neplus avoir à le fixer
+ TODO dans le code
+ TODO vérfier que la jointure fonctionne
+
+*/
+update temp.explore_queries_4 t4
+  set t4.ls_select_from_tables=t2.ls_tables
+from (
+ select
+    t.key,
+    array_agg(distinct tb.TABLE_NAME) as ls_tables
+  from
+    temp.explore_queries_4 t
+    cross join
+      unnest(t.ls_words_with_points) word
+      inner join
         warehouse.INFORMATION_SCHEMA.TABLES tb
-          on word=tb.TABLE_NAME
+          on (
+                word=concat('warehouse', '.', tb.TABLE_NAME)
+                or word=concat('bbc-data-platform.warehouse', '.', tb.TABLE_NAME)
+              )
   where
     t.type_operation='select'
   group by
@@ -25,15 +61,16 @@ create or replace table temp.explore_queries_4 as
 select
     t.*,
     case
-        when type_operation='update' then regexp_extract(query, 'update ([a-z._0-9]*) ')
-        when type_operation='insert' then regexp_extract(query, 'insert into ([a-z._0-9]*) ')
-        when type_operation='drop' then regexp_extract(replace(query, 'if exists ',''), 'drop table ([a-z._0-9]*)')
-        when type_operation='delete' then regexp_extract(replace(query, 'from ',''), 'delete ([a-z._0-9]*) ')
-        when type_operation='create' then regexp_extract(replace(query, 'or replace ',''), 'create table ([a-z._0-9]*) ')
+        when type_operation='update' then regexp_extract(query, 'update ([a-z._0-9-]*) ')
+        when type_operation='insert' then regexp_extract(replace(query, 'into ',''), 'insert ([a-z._0-9-]*) ')
+        when type_operation='drop' then regexp_extract(replace(query, 'if exists ',''), 'drop table ([a-z._0-9-]*)')
+        when type_operation='delete' then regexp_extract(replace(query, 'from ',''), 'delete ([a-z._0-9-]*) ')
+        when type_operation='create' then regexp_extract(replace(query, 'or replace ',''), 'create table ([a-z._0-9-]*) ')
         else null
     end
-    as cdiud_tables,
-    cast(null as ARRAY<String>) as select_from_tables
+    as cdiud_table,
+    cast(null as ARRAY<String>) as ls_select_from_tables,
+    cast(null as ARRAY<String>) as ls_select_fields,
 from
   `temp.explore_queries_3`  t;
 
@@ -58,7 +95,10 @@ select
     when Query like '%insert %' then 'insert'
     when Query like '%select %' then 'select'
   end as type_operation,
-  REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_]+' ) as ls_words
+  REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_]+' ) as ls_words,
+  REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_.]+' ) as ls_words_with_points,
+  original_query
+
 from
   temp.explore_queries_2
 where
@@ -79,7 +119,8 @@ lower(
      ),
     '(',' ('
    )
-) as Query
+) as Query,
+Query as original_query
 from
     temp.explore_queries t;
 
