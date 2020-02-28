@@ -1,3 +1,26 @@
+
+update temp.explore_queries_4 t4
+  set t4.select_from_tables=t2.ls_tables
+from (
+ select
+    t.key,
+    array_agg(tb.TABLE_NAME) as ls_tables
+  from
+    temp.explore_queries_4 t
+    cross join
+      unnest(t.ls_words) word
+      inner join
+        warehouse.INFORMATION_SCHEMA.TABLES tb
+          on word=tb.TABLE_NAME
+  where
+    t.type_operation='select'
+  group by
+    1
+) t2
+where
+  t2.key=t4.key;
+
+
 create or replace table temp.explore_queries_4 as
 select
     t.*,
@@ -9,7 +32,8 @@ select
         when type_operation='create' then regexp_extract(replace(query, 'or replace ',''), 'create table ([a-z._0-9]*) ')
         else null
     end
-    as concerned_tables
+    as cdiud_tables,
+    cast(null as ARRAY<String>) as select_from_tables
 from
   `temp.explore_queries_3`  t;
 
@@ -27,12 +51,12 @@ select
     REGEXP_EXTRACT(Query, "\\*[\\s\\S]*\\Wsub_category[\\s]*=[\\s]*'([^']*)'[\\s\\S]*\\*/") as TagSubCategory,
 
   case
-    when Query like '%select %' then 'select'
     when Query like '%drop %' then 'drop'
     when Query like '%create %' then 'create'
     when Query like '%delete %' then 'delete'
     when Query like '%update %' then 'update'
     when Query like '%insert %' then 'insert'
+    when Query like '%select %' then 'select'
   end as type_operation,
   REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_]+' ) as ls_words
 from
