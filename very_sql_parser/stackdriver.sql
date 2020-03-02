@@ -1,15 +1,40 @@
+/*TODO  gestino de la requete à voir */
+with t1 as (
+  select
+    coalesce(t4.cdiud_table , ls) as tables,
+    type_operation,
+    1 as nb_occ
+  from
+    temp.explore_queries_4 t4 ,
+    unnest(t4.ls_select_from_tables ) ls
+)
+select distinct
+  concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as table,
+  sum( sum(coalesce(t1.nb_occ,0)) ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_used
+from
+  warehouse.INFORMATION_SCHEMA.TABLES tb
+    left outer join t1
+      on concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) = t1.tables
+      and t1.tables like 'bbc-data-platform.warehouse%'
+group by
+  tb.table_catalog,tb.table_schema, tb.TABLE_NAME, type_operation
+order by 2 desc;
+
 /*
 TODO faire les stats d'utilisation ensuite par champ, par tables
 TODO une vision table.cchamp
 
+TODO ajouter une clause pour faire la recherche des champs insérés / mis à jour
+TODO ajouter res pour enrichir le champs select pour les requetes ins/upd : faire la même recherche qu'en select pour trouver les from_tables en enlevant de la liste celle identifiées en insert select
+
 */
 
 update temp.explore_queries_4 t4
-  set t4.ls_select_fields=t2.ls_fields
+  set t4.ls_select_fields=ls_fields
 from (
  select
     t.key,
-    array_agg(distinct tb.COLUMN_NAME) as ls_fields
+    array_agg(distinct concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME, '.', tb.COLUMN_NAME) ) as ls_fields
   from
     temp.explore_queries_4 t
     cross join
@@ -17,7 +42,7 @@ from (
       inner join
         warehouse.INFORMATION_SCHEMA.COLUMNS tb
           on word=tb.COLUMN_NAME
-          and tb.TABLE_NAME in unnest(t.ls_select_from_tables)
+          and concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) in unnest(t.ls_select_from_tables)
   where
     t.type_operation='select'
   group by
@@ -29,7 +54,6 @@ where
 /*
  TODO créer une table regroupant toutes metadatas de tous les schémas pour neplus avoir à le fixer
  TODO dans le code
- TODO vérfier que la jointure fonctionne
 
 */
 update temp.explore_queries_4 t4
@@ -37,7 +61,7 @@ update temp.explore_queries_4 t4
 from (
  select
     t.key,
-    array_agg(distinct tb.TABLE_NAME) as ls_tables
+    array_agg(distinct concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) ) as ls_tables
   from
     temp.explore_queries_4 t
     cross join
@@ -45,8 +69,8 @@ from (
       inner join
         warehouse.INFORMATION_SCHEMA.TABLES tb
           on (
-                word=concat('warehouse', '.', tb.TABLE_NAME)
-                or word=concat('bbc-data-platform.warehouse', '.', tb.TABLE_NAME)
+                word=concat(tb.table_schema, '.', tb.TABLE_NAME)
+                or word=concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)
               )
   where
     t.type_operation='select'
@@ -71,6 +95,7 @@ select
     as cdiud_table,
     cast(null as ARRAY<String>) as ls_select_from_tables,
     cast(null as ARRAY<String>) as ls_select_fields,
+    cast(null as ARRAY<String>) as ls_ins_upd_fields,
 from
   `temp.explore_queries_3`  t;
 
@@ -96,13 +121,12 @@ select
     when Query like '%select %' then 'select'
   end as type_operation,
   REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_]+' ) as ls_words,
-  REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_.]+' ) as ls_words_with_points,
+  REGEXP_EXTRACT_ALL(Query, '[A-Za-z0-9_.-]+' ) as ls_words_with_points,
   original_query
 
 from
   temp.explore_queries_2
-where
-  UserId like 'airflow%';
+;
 
 
 create or replace table temp.explore_queries_2 as
