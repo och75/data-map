@@ -1,7 +1,3 @@
-/*
-TODO check pour trouver les tables en insert/update et en select
-*/
--------
 with t1 as (
   select
     coalesce(t4.cdiud_table, ls) as tables,
@@ -12,31 +8,28 @@ with t1 as (
     left outer join unnest(t4.ls_select_from_tables ) ls
 )
 select distinct
-  concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as table,
-  sum( sum(coalesce(t1.nb_occ,0)) ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_used,
-  countif(type_operation ='select') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_select,
-  sum( countif(type_operation ='insert') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_insert,
-  sum( countif(type_operation ='update') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_update,
-  sum( countif(type_operation ='create') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_create,
-  sum( countif(type_operation ='drop') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_drop
+  tb.full_name as table,
+  sum( sum(coalesce(t1.nb_occ,0)) ) over( partition by tb.full_name) as nb_used,
+  sum( countif(type_operation ='select') ) over( partition by tb.full_name) as nb_select,
+  sum( countif(type_operation ='insert') ) over( partition by tb.full_name) as nb_insert,
+  sum( countif(type_operation ='update') ) over( partition by tb.full_name) as nb_update,
+  sum( countif(type_operation ='create') ) over( partition by tb.full_name) as nb_create,
+  sum( countif(type_operation ='drop') ) over( partition by tb.full_name) as nb_drop
 from
-  warehouse.INFORMATION_SCHEMA.TABLES tb
+  temp.warehouse_tables_referential tb
     left outer join t1
-      on concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) = t1.tables
+      on tb.full_name = t1.tables
       and t1.tables like 'bbc-data-platform.warehouse%'
 group by
   tb.table_catalog,tb.table_schema, tb.TABLE_NAME, type_operation
 order by 2 desc;
 
+
 /*
-TODO faire les stats d'utilisation ensuite par champ, par tables
-TODO une vision table.cchamp
-
 TODO ajouter une clause pour faire la recherche des champs insérés / mis à jour
-TODO ajouter res pour enrichir le champs select pour les requetes ins/upd : faire la même recherche qu'en select pour trouver les from_tables en enlevant de la liste celle identifiées en insert select
-
 */
 
+/*finding out fields used in select queries */
 update temp.explore_queries_4 t4
   set t4.ls_select_fields=ls_fields
 from (
@@ -51,37 +44,30 @@ from (
         warehouse.INFORMATION_SCHEMA.COLUMNS tb
           on word=tb.COLUMN_NAME
           and concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) in unnest(t.ls_select_from_tables)
-  where
-    t.type_operation='select'
   group by
     1
 ) t2
 where
   t2.key=t4.key;
 
-/*
- TODO créer une table regroupant toutes metadatas de tous les schémas pour neplus avoir à le fixer
- TODO dans le code
-
-*/
+/*find tables in from clauses  */
 update temp.explore_queries_4 t4
   set t4.ls_select_from_tables=t2.ls_tables
 from (
  select
     t.key,
-    array_agg(distinct concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) ) as ls_tables
+    array_agg(distinct tb.full_name ) as ls_tables
   from
     temp.explore_queries_4 t
     cross join
       unnest(t.ls_words_with_points) word
       inner join
-        warehouse.INFORMATION_SCHEMA.TABLES tb
+        temp.warehouse_tables_referential tb
           on (
                 word=concat(tb.table_schema, '.', tb.TABLE_NAME)
-                or word=concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)
+                or word=tb.full_name
               )
-  where
-    t.type_operation='select'
+              and tb.full_name !=coalesce(t.cdiud_table, 'nothing')
   group by
     1
 ) t2
@@ -89,6 +75,13 @@ where
   t2.key=t4.key;
 
 
+/*uniformizing table name */
+update temp.explore_queries_4
+  set cdiud_table=concat('bbc-data-platform.', cdiud_table)
+where
+  cdiud_table not like 'bbc-data-platform%';
+
+/*finding out the name of the concerned table */
 create or replace table temp.explore_queries_4 as
 select
     t.*,
@@ -108,7 +101,7 @@ from
   `temp.explore_queries_3`  t;
 
 
-
+/*extracting tags  and the type of SQL query  and extracting all words from queries*/
   create or replace table temp.explore_queries_3 as
 select
   key,
@@ -136,7 +129,7 @@ from
   temp.explore_queries_2
 ;
 
-
+/*cleaning queries */
 create or replace table temp.explore_queries_2 as
 select
     t.* except (Query),
@@ -157,7 +150,7 @@ from
     temp.explore_queries t;
 
 
-
+/*get raw data SQL*/
 create or replace table temp.explore_queries as
 SELECT
     row_number() over() as key,
@@ -193,3 +186,21 @@ FROM
 WHERE
   protopayload_auditlog.servicedata_v1_bigquery.jobCompletedEvent.job.jobConfiguration.query.query is not null
 ;
+
+/*create ref. tables project bbc-data-platform*/
+create or replace table temp.warehouse_tables_referential as
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from BBL_staging.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from BBL_warehouse.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from BBL_work.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from cdc.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from eventbus.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from eventlogs.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from intel.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from lbaccesslogs.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from legacy.INFORMATION_SCHEMA.TABLES tb  union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from staging.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from tech.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from tracktor.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from tracktor_realtime.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from warehouse.INFORMATION_SCHEMA.TABLES tb union all
+select concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as full_name, tb.* from work.INFORMATION_SCHEMA.TABLES tb ;
