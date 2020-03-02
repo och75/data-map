@@ -1,16 +1,24 @@
-/*TODO  gestino de la requete à voir */
+/*
+TODO check pour trouver les tables en insert/update et en select
+*/
+-------
 with t1 as (
   select
-    coalesce(t4.cdiud_table , ls) as tables,
+    coalesce(t4.cdiud_table, ls) as tables,
     type_operation,
     1 as nb_occ
   from
-    temp.explore_queries_4 t4 ,
-    unnest(t4.ls_select_from_tables ) ls
+    temp.explore_queries_4 t4
+    left outer join unnest(t4.ls_select_from_tables ) ls
 )
 select distinct
   concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME) as table,
-  sum( sum(coalesce(t1.nb_occ,0)) ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_used
+  sum( sum(coalesce(t1.nb_occ,0)) ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_used,
+  countif(type_operation ='select') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_select,
+  sum( countif(type_operation ='insert') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_insert,
+  sum( countif(type_operation ='update') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_update,
+  sum( countif(type_operation ='create') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_create,
+  sum( countif(type_operation ='drop') ) over( partition by concat(tb.table_catalog, '.', tb.table_schema, '.', tb.TABLE_NAME)) as nb_drop
 from
   warehouse.INFORMATION_SCHEMA.TABLES tb
     left outer join t1
